@@ -1,0 +1,988 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>股票交易策略计算器</title>
+    <style>
+      :root {
+        --bg: #edf3fb;
+        --text: #102034;
+        --muted: #5f7085;
+        --card: #ffffff;
+        --line: #d5e0ed;
+        --primary: #0f766e;
+        --primary-hover: #115e59;
+        --accent: #0ea5e9;
+        --ok-bg: #ebfdf7;
+        --ok-line: #b7efdc;
+        --bad-bg: #fff2f2;
+        --bad-line: #fed1d1;
+        --shadow: 0 12px 28px rgba(16, 32, 52, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        color: var(--text);
+        font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", sans-serif;
+        background: radial-gradient(circle at 0% 0%, #f6faff 0%, var(--bg) 55%, #e9f0f8 100%);
+      }
+
+      .container {
+        max-width: 1080px;
+        margin: 36px auto;
+        padding: 0 16px;
+      }
+
+      .title {
+        margin: 0;
+        font-size: clamp(28px, 3.2vw, 36px);
+      }
+
+      .subtitle {
+        margin: 8px 0 22px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+
+      .tabs {
+        display: flex;
+        gap: 8px;
+        overflow-x: auto;
+        padding: 6px;
+        margin-bottom: 14px;
+        background: rgba(255, 255, 255, 0.72);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        box-shadow: var(--shadow);
+      }
+
+      .tab-button {
+        flex: 0 0 auto;
+        height: 40px;
+        padding: 0 16px;
+        color: var(--muted);
+        background: transparent;
+        border: 1px solid transparent;
+        box-shadow: none;
+      }
+
+      .tab-button:hover {
+        color: var(--primary);
+        background: #f3f8ff;
+        transform: none;
+      }
+
+      .tab-button.active {
+        color: #fff;
+        background: var(--primary);
+        border-color: var(--primary);
+      }
+
+      .tab-panel[hidden] {
+        display: none;
+      }
+
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 20px;
+        box-shadow: var(--shadow);
+      }
+
+      .section-title {
+        margin: 0;
+        font-size: 22px;
+      }
+
+      .section-note {
+        margin: 8px 0 16px;
+        font-size: 14px;
+        color: var(--muted);
+      }
+
+      .form-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 12px;
+      }
+
+      .average-cost-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .field label {
+        display: block;
+        margin-bottom: 7px;
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .field input {
+        width: 100%;
+        height: 44px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 10px 12px;
+        font-size: 14px;
+        background: #fcfeff;
+        color: var(--text);
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      }
+
+      .field input:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.2);
+      }
+
+      .actions {
+        margin-top: 14px;
+      }
+
+      button {
+        border: 0;
+        border-radius: 10px;
+        height: 44px;
+        padding: 0 18px;
+        background: var(--primary);
+        color: #fff;
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: transform 0.15s ease, background 0.15s ease;
+      }
+
+      button:hover {
+        background: var(--primary-hover);
+        transform: translateY(-1px);
+      }
+
+      .status {
+        margin-top: 14px;
+        padding: 11px 12px;
+        border-radius: 10px;
+        font-size: 14px;
+        border: 1px solid;
+      }
+
+      .status-ok {
+        background: var(--ok-bg);
+        border-color: var(--ok-line);
+        color: #0b4638;
+      }
+
+      .status-error {
+        background: var(--bad-bg);
+        border-color: var(--bad-line);
+        color: #8e1f1f;
+      }
+
+      .table-wrap {
+        margin-top: 14px;
+        max-height: 360px;
+        overflow: auto;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      th,
+      td {
+        padding: 10px 12px;
+        border-bottom: 1px solid #edf2f7;
+        font-size: 14px;
+        text-align: left;
+      }
+
+      th {
+        background: #f3f8ff;
+        position: sticky;
+        top: 0;
+        color: #38506d;
+        font-weight: 700;
+      }
+
+      tbody tr:nth-child(2n) {
+        background: #fafcff;
+      }
+
+      .price-grid {
+        margin-top: 14px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 12px;
+      }
+
+      .price-box {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 12px;
+        background: #fbfdff;
+      }
+
+      .price-label {
+        font-size: 13px;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+
+      .price-value {
+        font-size: 24px;
+        font-weight: 700;
+      }
+
+      @media (max-width: 640px) {
+        .container {
+          margin: 22px auto;
+          padding: 0 12px;
+        }
+
+        .tabs {
+          padding: 5px;
+        }
+
+        .tab-button {
+          height: 38px;
+          padding: 0 12px;
+          font-size: 13px;
+        }
+
+        .average-cost-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .card {
+          padding: 15px;
+        }
+
+        .title {
+          font-size: 28px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1 class="title">股票交易策略计算器</h1>
+      <p class="subtitle">包含涨停复利、止盈止损、预期股价、买入份数、复利复亏、双账户推演、补仓成本价七个计算模块。</p>
+
+      <div class="tabs" role="tablist" aria-label="计算器功能">
+        <button class="tab-button active" type="button" role="tab" aria-selected="true" aria-controls="limitUpPanel" data-tab-target="limitUpPanel">涨停复利</button>
+        <button class="tab-button" type="button" role="tab" aria-selected="false" aria-controls="pricePanel" data-tab-target="pricePanel">止盈止损</button>
+        <button class="tab-button" type="button" role="tab" aria-selected="false" aria-controls="expectedPricePanel" data-tab-target="expectedPricePanel">预期股价</button>
+        <button class="tab-button" type="button" role="tab" aria-selected="false" aria-controls="buyPanel" data-tab-target="buyPanel">买入份数</button>
+        <button class="tab-button" type="button" role="tab" aria-selected="false" aria-controls="compoundPanel" data-tab-target="compoundPanel">复利复亏</button>
+        <button class="tab-button" type="button" role="tab" aria-selected="false" aria-controls="dualPanel" data-tab-target="dualPanel">双账户推演</button>
+        <button class="tab-button" type="button" role="tab" aria-selected="false" aria-controls="averageCostPanel" data-tab-target="averageCostPanel">补仓成本价</button>
+      </div>
+
+      <div class="layout">
+        <section class="card tab-panel" id="limitUpPanel" role="tabpanel">
+          <h2 class="section-title">涨停复利计算器</h2>
+          <p class="section-note">输入本金、涨停率和目标金额，计算达到目标需要几次涨停。</p>
+
+          <div class="form-grid">
+            <div class="field">
+              <label for="initialPrincipal">初始本金</label>
+              <input id="initialPrincipal" type="number" min="0" step="0.01" value="100" />
+            </div>
+            <div class="field">
+              <label for="limitUpPercent">涨停百分比 (%)</label>
+              <input id="limitUpPercent" type="number" min="0" step="0.01" value="10" />
+            </div>
+            <div class="field">
+              <label for="targetAmount">目标金额</label>
+              <input id="targetAmount" type="number" min="0" step="0.01" value="10000" />
+            </div>
+          </div>
+
+          <div class="actions">
+            <button id="calculateBtn" type="button">开始计算</button>
+          </div>
+
+          <div id="limitStatus" class="status status-ok" hidden></div>
+          <div id="limitError" class="status status-error" hidden></div>
+
+          <div class="table-wrap" id="limitTableWrap" hidden>
+            <table>
+              <thead>
+                <tr>
+                  <th>第几次涨停</th>
+                  <th>涨停后金额</th>
+                </tr>
+              </thead>
+              <tbody id="limitResultBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="card tab-panel" id="pricePanel" role="tabpanel" hidden>
+          <h2 class="section-title">止盈止损计算器</h2>
+          <p class="section-note">输入初始价格、止盈率和止损率，计算对应的止盈价与止损价。</p>
+
+          <div class="form-grid">
+            <div class="field">
+              <label for="entryPrice">初始价格</label>
+              <input id="entryPrice" type="number" min="0" step="0.01" value="100" />
+            </div>
+            <div class="field">
+              <label for="takeProfitRate">止盈率 (%)</label>
+              <input id="takeProfitRate" type="number" min="0" step="0.01" value="20" />
+            </div>
+            <div class="field">
+              <label for="stopLossRate">止损率 (%)</label>
+              <input id="stopLossRate" type="number" min="0" step="0.01" value="8" />
+            </div>
+          </div>
+
+          <div class="actions">
+            <button id="priceBtn" type="button">计算止盈止损价</button>
+          </div>
+
+          <div id="priceError" class="status status-error" hidden></div>
+          <div class="price-grid" id="priceResult" hidden>
+            <div class="price-box">
+              <div class="price-label">止盈价</div>
+              <div class="price-value" id="takeProfitPrice">0.000</div>
+            </div>
+            <div class="price-box">
+              <div class="price-label">止损价</div>
+              <div class="price-value" id="stopLossPrice">0.000</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card tab-panel" id="expectedPricePanel" role="tabpanel" hidden>
+          <h2 class="section-title">预期股价涨跌计算器</h2>
+          <p class="section-note">输入当前股价和预期股价，计算预期上涨或下跌的金额与幅度。</p>
+
+          <div class="form-grid">
+            <div class="field">
+              <label for="currentPrice">当前股价</label>
+              <input id="currentPrice" type="number" min="0" step="0.01" value="10" />
+            </div>
+            <div class="field">
+              <label for="expectedPrice">预期股价</label>
+              <input id="expectedPrice" type="number" min="0" step="0.01" value="12.5" />
+            </div>
+          </div>
+
+          <div class="actions">
+            <button id="expectedPriceBtn" type="button">计算预期涨跌</button>
+          </div>
+
+          <div id="expectedPriceError" class="status status-error" hidden></div>
+          <div class="price-grid" id="expectedPriceResult" hidden>
+            <div class="price-box">
+              <div class="price-label">预期方向</div>
+              <div class="price-value" id="expectedDirection">上涨</div>
+            </div>
+            <div class="price-box">
+              <div class="price-label">涨跌金额</div>
+              <div class="price-value" id="expectedChangeAmount">0.000</div>
+            </div>
+            <div class="price-box">
+              <div class="price-label">涨跌幅度</div>
+              <div class="price-value" id="expectedChangePercent">0.000%</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card tab-panel" id="buyPanel" role="tabpanel" hidden>
+          <h2 class="section-title">买入份数计算器</h2>
+          <p class="section-note">输入买入金额和当前股价，按一手 100 份计算可买入份数与买完后剩余金额。</p>
+
+          <div class="form-grid">
+            <div class="field">
+              <label for="buyAmount">买入金额</label>
+              <input id="buyAmount" type="number" min="0" step="0.01" value="1000" />
+            </div>
+            <div class="field">
+              <label for="buyCurrentPrice">当前股价</label>
+              <input id="buyCurrentPrice" type="number" min="0" step="0.01" value="13.5" />
+            </div>
+          </div>
+
+          <div class="actions">
+            <button id="buyBtn" type="button">计算买入份数</button>
+          </div>
+
+          <div id="buyError" class="status status-error" hidden></div>
+          <div class="price-grid" id="buyResult" hidden>
+            <div class="price-box">
+              <div class="price-label">可买入份数（整手）</div>
+              <div class="price-value" id="buyShares">0</div>
+            </div>
+            <div class="price-box">
+              <div class="price-label">买完后剩余金额</div>
+              <div class="price-value" id="buyRemainingAmount">0.000</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card tab-panel" id="compoundPanel" role="tabpanel" hidden>
+          <h2 class="section-title">复利复亏计算器</h2>
+          <p class="section-note">输入初始金额、固定利率和次数，计算连续复利与连续复亏后的金额。</p>
+
+          <div class="form-grid">
+            <div class="field">
+              <label for="compoundPrincipal">初始金额</label>
+              <input id="compoundPrincipal" type="number" min="0" step="0.01" value="1000" />
+            </div>
+            <div class="field">
+              <label for="compoundRate">利率 (%)</label>
+              <input id="compoundRate" type="number" min="0" step="0.01" value="10" />
+            </div>
+            <div class="field">
+              <label for="compoundTimes">次数</label>
+              <input id="compoundTimes" type="number" min="1" step="1" value="5" />
+            </div>
+          </div>
+
+          <div class="actions">
+            <button id="compoundBtn" type="button">计算复利复亏</button>
+          </div>
+
+          <div id="compoundError" class="status status-error" hidden></div>
+          <div class="price-grid" id="compoundResult" hidden>
+            <div class="price-box">
+              <div class="price-label">复利后金额</div>
+              <div class="price-value" id="compoundUpValue">0.000</div>
+            </div>
+            <div class="price-box">
+              <div class="price-label">复亏后金额</div>
+              <div class="price-value" id="compoundDownValue">0.000</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card tab-panel" id="dualPanel" role="tabpanel" hidden>
+          <h2 class="section-title">双账户推演计算器</h2>
+          <p class="section-note">输入 A/B 初始金额和每轮百分比，按“ A 赚 x% 、B 亏 x% ”推演多轮结果。</p>
+
+          <div class="form-grid">
+            <div class="field">
+              <label for="accountAStart">A 账户初始金额</label>
+              <input id="accountAStart" type="number" min="0" step="0.01" value="1000" />
+            </div>
+            <div class="field">
+              <label for="accountBStart">B 账户初始金额</label>
+              <input id="accountBStart" type="number" min="0" step="0.01" value="1000" />
+            </div>
+            <div class="field">
+              <label for="roundRates">每轮百分比（逗号分隔）</label>
+              <input id="roundRates" type="text" value="10,6,8" />
+            </div>
+          </div>
+
+          <div class="actions">
+            <button id="dualBtn" type="button">开始推演</button>
+          </div>
+
+          <div id="dualError" class="status status-error" hidden></div>
+          <div id="dualStatus" class="status status-ok" hidden></div>
+
+          <div class="table-wrap" id="dualTableWrap" hidden>
+            <table>
+              <thead>
+                <tr>
+                  <th>轮次</th>
+                  <th>百分比</th>
+                  <th>A 账户金额</th>
+                  <th>B 账户金额</th>
+                </tr>
+              </thead>
+              <tbody id="dualResultBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="card tab-panel" id="averageCostPanel" role="tabpanel" hidden>
+          <h2 class="section-title">补仓成本价计算器</h2>
+          <p class="section-note">输入建仓和补仓的成本价格、买入股数、手续费，计算补仓后的最新成本价与总持股数。</p>
+
+          <div class="form-grid average-cost-grid">
+            <div class="field">
+              <label for="initialCostPrice">建仓成本价格</label>
+              <input id="initialCostPrice" type="number" min="0" step="0.01" value="10" />
+            </div>
+            <div class="field">
+              <label for="initialShares">建仓买入股数</label>
+              <input id="initialShares" type="number" min="1" step="1" value="1000" />
+            </div>
+            <div class="field">
+              <label for="initialFee">建仓手续费</label>
+              <input id="initialFee" type="number" min="0" step="0.01" value="0" />
+            </div>
+            <div class="field">
+              <label for="addCostPrice">补仓成本价格</label>
+              <input id="addCostPrice" type="number" min="0" step="0.01" value="8" />
+            </div>
+            <div class="field">
+              <label for="addShares">补仓买入股数</label>
+              <input id="addShares" type="number" min="1" step="1" value="1000" />
+            </div>
+            <div class="field">
+              <label for="addFee">补仓手续费</label>
+              <input id="addFee" type="number" min="0" step="0.01" value="0" />
+            </div>
+          </div>
+
+          <div class="actions">
+            <button id="averageCostBtn" type="button">计算补仓成本</button>
+          </div>
+
+          <div id="averageCostError" class="status status-error" hidden></div>
+          <div class="price-grid" id="averageCostResult" hidden>
+            <div class="price-box">
+              <div class="price-label">最新成本价</div>
+              <div class="price-value" id="latestCostPrice">0.000</div>
+            </div>
+            <div class="price-box">
+              <div class="price-label">总持股数</div>
+              <div class="price-value" id="totalShares">0</div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <script type="module">
+      const initialInput = document.getElementById("initialPrincipal");
+      const percentInput = document.getElementById("limitUpPercent");
+      const targetInput = document.getElementById("targetAmount");
+      const calculateBtn = document.getElementById("calculateBtn");
+      const limitStatus = document.getElementById("limitStatus");
+      const limitError = document.getElementById("limitError");
+      const limitTableWrap = document.getElementById("limitTableWrap");
+      const limitResultBody = document.getElementById("limitResultBody");
+
+      const entryPriceInput = document.getElementById("entryPrice");
+      const takeProfitRateInput = document.getElementById("takeProfitRate");
+      const stopLossRateInput = document.getElementById("stopLossRate");
+      const priceBtn = document.getElementById("priceBtn");
+      const priceError = document.getElementById("priceError");
+      const priceResult = document.getElementById("priceResult");
+      const takeProfitPrice = document.getElementById("takeProfitPrice");
+      const stopLossPrice = document.getElementById("stopLossPrice");
+      const currentPriceInput = document.getElementById("currentPrice");
+      const expectedPriceInput = document.getElementById("expectedPrice");
+      const expectedPriceBtn = document.getElementById("expectedPriceBtn");
+      const expectedPriceError = document.getElementById("expectedPriceError");
+      const expectedPriceResult = document.getElementById("expectedPriceResult");
+      const expectedDirection = document.getElementById("expectedDirection");
+      const expectedChangeAmount = document.getElementById("expectedChangeAmount");
+      const expectedChangePercent = document.getElementById("expectedChangePercent");
+      const buyAmountInput = document.getElementById("buyAmount");
+      const buyCurrentPriceInput = document.getElementById("buyCurrentPrice");
+      const buyBtn = document.getElementById("buyBtn");
+      const buyError = document.getElementById("buyError");
+      const buyResult = document.getElementById("buyResult");
+      const buyShares = document.getElementById("buyShares");
+      const buyRemainingAmount = document.getElementById("buyRemainingAmount");
+      const compoundPrincipalInput = document.getElementById("compoundPrincipal");
+      const compoundRateInput = document.getElementById("compoundRate");
+      const compoundTimesInput = document.getElementById("compoundTimes");
+      const compoundBtn = document.getElementById("compoundBtn");
+      const compoundError = document.getElementById("compoundError");
+      const compoundResult = document.getElementById("compoundResult");
+      const compoundUpValue = document.getElementById("compoundUpValue");
+      const compoundDownValue = document.getElementById("compoundDownValue");
+      const accountAStartInput = document.getElementById("accountAStart");
+      const accountBStartInput = document.getElementById("accountBStart");
+      const roundRatesInput = document.getElementById("roundRates");
+      const dualBtn = document.getElementById("dualBtn");
+      const dualError = document.getElementById("dualError");
+      const dualStatus = document.getElementById("dualStatus");
+      const dualTableWrap = document.getElementById("dualTableWrap");
+      const dualResultBody = document.getElementById("dualResultBody");
+      const initialCostPriceInput = document.getElementById("initialCostPrice");
+      const initialSharesInput = document.getElementById("initialShares");
+      const initialFeeInput = document.getElementById("initialFee");
+      const addCostPriceInput = document.getElementById("addCostPrice");
+      const addSharesInput = document.getElementById("addShares");
+      const addFeeInput = document.getElementById("addFee");
+      const averageCostBtn = document.getElementById("averageCostBtn");
+      const averageCostError = document.getElementById("averageCostError");
+      const averageCostResult = document.getElementById("averageCostResult");
+      const latestCostPrice = document.getElementById("latestCostPrice");
+      const totalShares = document.getElementById("totalShares");
+      const tabButtons = document.querySelectorAll("[data-tab-target]");
+      const tabPanels = document.querySelectorAll(".tab-panel");
+
+      calculateBtn.addEventListener("click", handleLimitUp);
+      priceBtn.addEventListener("click", handlePriceCalc);
+      expectedPriceBtn.addEventListener("click", handleExpectedPriceCalc);
+      buyBtn.addEventListener("click", handleBuyCalc);
+      compoundBtn.addEventListener("click", handleCompoundCalc);
+      dualBtn.addEventListener("click", handleDualAccountCalc);
+      averageCostBtn.addEventListener("click", handleAverageCostCalc);
+      for (const button of tabButtons) {
+        button.addEventListener("click", () => switchTab(button.dataset.tabTarget));
+      }
+
+      handleLimitUp();
+      handlePriceCalc();
+      handleExpectedPriceCalc();
+      handleBuyCalc();
+      handleCompoundCalc();
+      handleDualAccountCalc();
+      handleAverageCostCalc();
+
+      function switchTab(targetId) {
+        for (const panel of tabPanels) {
+          panel.hidden = panel.id !== targetId;
+        }
+        for (const button of tabButtons) {
+          const active = button.dataset.tabTarget === targetId;
+          button.classList.toggle("active", active);
+          button.setAttribute("aria-selected", String(active));
+        }
+      }
+
+      function handleLimitUp() {
+        hide(limitError);
+        hide(limitStatus);
+        hide(limitTableWrap);
+
+        const initialPrincipal = Number(initialInput.value);
+        const limitUpPercent = Number(percentInput.value);
+        const targetAmount = Number(targetInput.value);
+
+        try {
+          validateLimitInputs(initialPrincipal, limitUpPercent, targetAmount);
+          const result = calculateLimitUp(initialPrincipal, limitUpPercent, targetAmount);
+          renderLimitResult(result, targetAmount);
+        } catch (error) {
+          show(limitError, readError(error, "输入有误"));
+        }
+      }
+
+      function handlePriceCalc() {
+        hide(priceError);
+        hide(priceResult);
+
+        const entryPrice = Number(entryPriceInput.value);
+        const takeProfitRate = Number(takeProfitRateInput.value);
+        const stopLossRate = Number(stopLossRateInput.value);
+
+        try {
+          if (!Number.isFinite(entryPrice) || entryPrice <= 0) {
+            throw new Error("初始价格必须大于 0。");
+          }
+          if (!Number.isFinite(takeProfitRate) || takeProfitRate < 0) {
+            throw new Error("止盈率必须大于或等于 0。");
+          }
+          if (!Number.isFinite(stopLossRate) || stopLossRate < 0) {
+            throw new Error("止损率必须大于或等于 0。");
+          }
+
+          const tp = entryPrice * (1 + takeProfitRate / 100);
+          const sl = entryPrice * (1 - stopLossRate / 100);
+          if (sl < 0) {
+            throw new Error("止损率过高，止损价不能小于 0。");
+          }
+
+          takeProfitPrice.textContent = formatMoney(tp);
+          stopLossPrice.textContent = formatMoney(sl);
+          show(priceResult);
+        } catch (error) {
+          show(priceError, readError(error, "输入有误"));
+        }
+      }
+
+      function handleExpectedPriceCalc() {
+        hide(expectedPriceError);
+        hide(expectedPriceResult);
+
+        const currentPrice = Number(currentPriceInput.value);
+        const expectedPrice = Number(expectedPriceInput.value);
+
+        try {
+          if (!Number.isFinite(currentPrice) || currentPrice <= 0) {
+            throw new Error("当前股价必须大于 0。");
+          }
+          if (!Number.isFinite(expectedPrice) || expectedPrice <= 0) {
+            throw new Error("预期股价必须大于 0。");
+          }
+
+          const changeAmount = expectedPrice - currentPrice;
+          const changePercent = changeAmount / currentPrice * 100;
+          const direction = changeAmount > 0 ? "上涨" : changeAmount < 0 ? "下跌" : "持平";
+
+          expectedDirection.textContent = direction;
+          expectedChangeAmount.textContent = formatMoney(Math.abs(changeAmount));
+          expectedChangePercent.textContent = `${formatMoney(Math.abs(changePercent))}%`;
+          show(expectedPriceResult);
+        } catch (error) {
+          show(expectedPriceError, readError(error, "输入有误"));
+        }
+      }
+
+      function handleBuyCalc() {
+        hide(buyError);
+        hide(buyResult);
+
+        const buyAmount = Number(buyAmountInput.value);
+        const currentPrice = Number(buyCurrentPriceInput.value);
+
+        try {
+          if (!Number.isFinite(buyAmount) || buyAmount <= 0) {
+            throw new Error("买入金额必须大于 0。");
+          }
+          if (!Number.isFinite(currentPrice) || currentPrice <= 0) {
+            throw new Error("当前股价必须大于 0。");
+          }
+
+          const shares = Math.floor(buyAmount / currentPrice / 100) * 100;
+          const remainingAmount = buyAmount - shares * currentPrice;
+
+          buyShares.textContent = String(shares);
+          buyRemainingAmount.textContent = formatMoney(remainingAmount);
+          show(buyResult);
+        } catch (error) {
+          show(buyError, readError(error, "输入有误"));
+        }
+      }
+
+      function handleCompoundCalc() {
+        hide(compoundError);
+        hide(compoundResult);
+
+        const principal = Number(compoundPrincipalInput.value);
+        const ratePercent = Number(compoundRateInput.value);
+        const times = Number(compoundTimesInput.value);
+
+        try {
+          if (!Number.isFinite(principal) || principal <= 0) {
+            throw new Error("初始金额必须大于 0。");
+          }
+          if (!Number.isFinite(ratePercent) || ratePercent < 0) {
+            throw new Error("利率必须大于或等于 0。");
+          }
+          if (!Number.isInteger(times) || times < 1) {
+            throw new Error("次数必须是大于或等于 1 的整数。");
+          }
+
+          const rate = ratePercent / 100;
+          const compounded = principal * (1 + rate) ** times;
+          const lossBase = 1 - rate;
+          if (lossBase < 0) {
+            throw new Error("利率过高，复亏计算不成立（利率需不超过 100%）。");
+          }
+          const lossCompounded = principal * lossBase ** times;
+
+          compoundUpValue.textContent = formatMoney(compounded);
+          compoundDownValue.textContent = formatMoney(lossCompounded);
+          show(compoundResult);
+        } catch (error) {
+          show(compoundError, readError(error, "输入有误"));
+        }
+      }
+
+      function handleDualAccountCalc() {
+        hide(dualError);
+        hide(dualStatus);
+        hide(dualTableWrap);
+
+        const aStart = Number(accountAStartInput.value);
+        const bStart = Number(accountBStartInput.value);
+        const rateText = roundRatesInput.value.trim();
+
+        try {
+          if (!Number.isFinite(aStart) || aStart < 0) {
+            throw new Error("A 账户初始金额必须大于或等于 0。");
+          }
+          if (!Number.isFinite(bStart) || bStart < 0) {
+            throw new Error("B 账户初始金额必须大于或等于 0。");
+          }
+          const rates = parseRoundRates(rateText);
+          if (rates.length === 0) {
+            throw new Error("请至少输入一轮百分比。");
+          }
+
+          let aValue = aStart;
+          let bValue = bStart;
+
+          dualResultBody.innerHTML = "";
+          for (let i = 0; i < rates.length; i += 1) {
+            const rate = rates[i];
+            const gainFactor = 1 + rate / 100;
+            const lossFactor = 1 - rate / 100;
+            if (lossFactor < 0) {
+              throw new Error(`第 ${i + 1} 轮百分比为 ${rate}%，会导致 B 账户结果为负，请调整。`);
+            }
+
+            aValue *= gainFactor;
+            bValue *= lossFactor;
+
+            const tr = document.createElement("tr");
+            tr.innerHTML = `<td>第${i + 1}轮</td><td>${formatMoney(rate)}%</td><td>${formatMoney(aValue)}</td><td>${formatMoney(bValue)}</td>`;
+            dualResultBody.appendChild(tr);
+          }
+
+          show(
+            dualStatus,
+            `推演完成：${rates.length} 轮后，A 账户 ${formatMoney(aValue)}，B 账户 ${formatMoney(bValue)}。`
+          );
+          show(dualTableWrap);
+        } catch (error) {
+          show(dualError, readError(error, "输入有误"));
+        }
+      }
+
+      function parseRoundRates(text) {
+        if (!text) {
+          return [];
+        }
+        return text
+          .split(/[，,、\s]+/)
+          .map((item) => item.trim())
+          .filter((item) => item.length > 0)
+          .map((item, index) => {
+            const value = Number(item);
+            if (!Number.isFinite(value) || value < 0) {
+              throw new Error(`第 ${index + 1} 个百分比无效，请输入大于或等于 0 的数字。`);
+            }
+            return value;
+          });
+      }
+
+      function handleAverageCostCalc() {
+        hide(averageCostError);
+        hide(averageCostResult);
+
+        const initialCostPrice = Number(initialCostPriceInput.value);
+        const initialShares = Number(initialSharesInput.value);
+        const initialFee = Number(initialFeeInput.value);
+        const addCostPrice = Number(addCostPriceInput.value);
+        const addShares = Number(addSharesInput.value);
+        const addFee = Number(addFeeInput.value);
+
+        try {
+          if (!Number.isFinite(initialCostPrice) || initialCostPrice <= 0) {
+            throw new Error("建仓成本价格必须大于 0。");
+          }
+          if (!Number.isInteger(initialShares) || initialShares <= 0) {
+            throw new Error("建仓买入股数必须是大于 0 的整数。");
+          }
+          if (!Number.isFinite(initialFee) || initialFee < 0) {
+            throw new Error("建仓手续费必须大于或等于 0。");
+          }
+          if (!Number.isFinite(addCostPrice) || addCostPrice <= 0) {
+            throw new Error("补仓成本价格必须大于 0。");
+          }
+          if (!Number.isInteger(addShares) || addShares <= 0) {
+            throw new Error("补仓买入股数必须是大于 0 的整数。");
+          }
+          if (!Number.isFinite(addFee) || addFee < 0) {
+            throw new Error("补仓手续费必须大于或等于 0。");
+          }
+
+          const shares = initialShares + addShares;
+          const totalCost = initialCostPrice * initialShares + initialFee + addCostPrice * addShares + addFee;
+          const cost = totalCost / shares;
+
+          latestCostPrice.textContent = formatMoney(cost);
+          totalShares.textContent = String(shares);
+          show(averageCostResult);
+        } catch (error) {
+          show(averageCostError, readError(error, "输入有误"));
+        }
+      }
+
+      function validateLimitInputs(initialPrincipal, limitUpPercent, targetAmount) {
+        if (!Number.isFinite(initialPrincipal) || initialPrincipal <= 0) {
+          throw new Error("初始本金必须大于 0。");
+        }
+        if (!Number.isFinite(limitUpPercent) || limitUpPercent <= 0) {
+          throw new Error("涨停百分比必须大于 0。");
+        }
+        if (!Number.isFinite(targetAmount) || targetAmount <= 0) {
+          throw new Error("目标金额必须大于 0。");
+        }
+      }
+
+      function calculateLimitUp(initialPrincipal, limitUpPercent, targetAmount) {
+        const growth = 1 + limitUpPercent / 100;
+        const rows = [];
+        let current = initialPrincipal;
+        let step = 0;
+
+        if (current >= targetAmount) {
+          return { reachedAtStep: 0, rows };
+        }
+
+        while (current < targetAmount && step < 5000) {
+          step += 1;
+          current *= growth;
+          rows.push({ step, amount: roundTo(current, 3) });
+        }
+
+        return { reachedAtStep: current >= targetAmount ? step : null, rows };
+      }
+
+      function renderLimitResult(result, targetAmount) {
+        if (result.reachedAtStep === null) {
+          show(limitStatus, "在 5000 次涨停内未达到目标金额。");
+        } else if (result.reachedAtStep === 0) {
+          show(limitStatus, "初始本金已经达到或超过目标金额。");
+        } else {
+          show(limitStatus, `达到目标金额 ${formatMoney(targetAmount)} 需要 ${result.reachedAtStep} 次涨停。`);
+        }
+
+        limitResultBody.innerHTML = "";
+        for (const row of result.rows) {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `<td>第${row.step}次</td><td>${formatMoney(row.amount)}</td>`;
+          limitResultBody.appendChild(tr);
+        }
+        show(limitTableWrap);
+      }
+
+      function formatMoney(value) {
+        return Number(value).toFixed(3);
+      }
+
+      function roundTo(value, decimals) {
+        const factor = 10 ** decimals;
+        return Math.round(value * factor) / factor;
+      }
+
+      function show(node, text) {
+        if (typeof text === "string") {
+          node.textContent = text;
+        }
+        node.hidden = false;
+      }
+
+      function hide(node) {
+        node.hidden = true;
+      }
+
+      function readError(error, fallback) {
+        if (error instanceof Error && error.message) {
+          return error.message;
+        }
+        return fallback;
+      }
+    </script>
+  </body>
+</html>
