@@ -118,6 +118,14 @@
         gap: 12px;
       }
 
+      .day-trade-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .day-trade-grid .row-break {
+        grid-column: 1;
+      }
+
       .average-cost-grid {
         grid-template-columns: repeat(3, minmax(0, 1fr));
       }
@@ -264,6 +272,7 @@
           font-size: 13px;
         }
 
+        .day-trade-grid,
         .average-cost-grid {
           grid-template-columns: 1fr;
         }
@@ -281,13 +290,14 @@
   <body>
     <div class="container">
       <h1 class="title">股票交易策略计算器</h1>
-      <p class="subtitle">包含涨停复利、止盈止损、预期股价、买入份数、复利复亏、双账户推演、补仓成本价七个计算模块。</p>
+      <p class="subtitle">包含涨停复利、止盈止损、预期股价、买入份数、做T计算、复利复亏、双账户推演、补仓成本价八个计算模块。</p>
 
       <div class="tabs" role="tablist" aria-label="计算器功能">
         <button class="tab-button active" type="button" role="tab" aria-selected="true" aria-controls="limitUpPanel" data-tab-target="limitUpPanel">涨停复利</button>
         <button class="tab-button" type="button" role="tab" aria-selected="false" aria-controls="pricePanel" data-tab-target="pricePanel">止盈止损</button>
         <button class="tab-button" type="button" role="tab" aria-selected="false" aria-controls="expectedPricePanel" data-tab-target="expectedPricePanel">预期股价</button>
         <button class="tab-button" type="button" role="tab" aria-selected="false" aria-controls="buyPanel" data-tab-target="buyPanel">买入份数</button>
+        <button class="tab-button" type="button" role="tab" aria-selected="false" aria-controls="dayTradePanel" data-tab-target="dayTradePanel">做T计算</button>
         <button class="tab-button" type="button" role="tab" aria-selected="false" aria-controls="compoundPanel" data-tab-target="compoundPanel">复利复亏</button>
         <button class="tab-button" type="button" role="tab" aria-selected="false" aria-controls="dualPanel" data-tab-target="dualPanel">双账户推演</button>
         <button class="tab-button" type="button" role="tab" aria-selected="false" aria-controls="averageCostPanel" data-tab-target="averageCostPanel">补仓成本价</button>
@@ -433,6 +443,70 @@
             <div class="price-box">
               <div class="price-label">买完后剩余金额</div>
               <div class="price-value" id="buyRemainingAmount">0.000</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card tab-panel" id="dayTradePanel" role="tabpanel" hidden>
+          <h2 class="section-title">做T计算器</h2>
+          <p class="section-note">输入原本持仓、做T买入和卖出信息，计算本次做T收益、最新成本和持有数量。</p>
+
+          <div class="form-grid day-trade-grid">
+            <div class="field">
+              <label for="dayOriginalCost">持仓成本</label>
+              <input id="dayOriginalCost" type="number" min="0" step="0.01" value="10" />
+            </div>
+            <div class="field">
+              <label for="dayOriginalShares">原本持仓数量</label>
+              <input id="dayOriginalShares" type="number" min="1" step="1" value="1000" />
+            </div>
+            <div class="field row-break">
+              <label for="dayBuyPrice">做T买入成本</label>
+              <input id="dayBuyPrice" type="number" min="0" step="0.01" value="9" />
+            </div>
+            <div class="field">
+              <label for="dayBuyShares">买入数量</label>
+              <input id="dayBuyShares" type="number" min="1" step="1" value="100" />
+            </div>
+            <div class="field">
+              <label for="dayBuyFee">买入交易手续费</label>
+              <input id="dayBuyFee" type="number" min="0" step="0.01" value="0" />
+            </div>
+            <div class="field row-break">
+              <label for="daySellPrice">做T卖出的成本</label>
+              <input id="daySellPrice" type="number" min="0" step="0.01" value="10" />
+            </div>
+            <div class="field">
+              <label for="daySellShares">卖出的数量</label>
+              <input id="daySellShares" type="number" min="1" step="1" value="100" />
+            </div>
+            <div class="field">
+              <label for="daySellFee">卖出交易手续费</label>
+              <input id="daySellFee" type="number" min="0" step="0.01" value="0" />
+            </div>
+          </div>
+
+          <div class="actions">
+            <button id="dayTradeBtn" type="button">计算做T结果</button>
+          </div>
+
+          <div id="dayTradeError" class="status status-error" hidden></div>
+          <div class="price-grid" id="dayTradeResult" hidden>
+            <div class="price-box">
+              <div class="price-label">本次做T赚到的金额</div>
+              <div class="price-value" id="dayTradeProfit">0.000</div>
+            </div>
+            <div class="price-box">
+              <div class="price-label">最新成本</div>
+              <div class="price-value" id="dayTradeLatestCost">0.000</div>
+            </div>
+            <div class="price-box">
+              <div class="price-label">最新持有数量</div>
+              <div class="price-value" id="dayTradeLatestShares">0</div>
+            </div>
+            <div class="price-box">
+              <div class="price-label">本次做T成本降低</div>
+              <div class="price-value" id="dayTradeCostReduction">0.000</div>
             </div>
           </div>
         </section>
@@ -597,6 +671,21 @@
       const buyResult = document.getElementById("buyResult");
       const buyShares = document.getElementById("buyShares");
       const buyRemainingAmount = document.getElementById("buyRemainingAmount");
+      const dayOriginalSharesInput = document.getElementById("dayOriginalShares");
+      const dayOriginalCostInput = document.getElementById("dayOriginalCost");
+      const dayBuyPriceInput = document.getElementById("dayBuyPrice");
+      const dayBuySharesInput = document.getElementById("dayBuyShares");
+      const dayBuyFeeInput = document.getElementById("dayBuyFee");
+      const daySellPriceInput = document.getElementById("daySellPrice");
+      const daySellSharesInput = document.getElementById("daySellShares");
+      const daySellFeeInput = document.getElementById("daySellFee");
+      const dayTradeBtn = document.getElementById("dayTradeBtn");
+      const dayTradeError = document.getElementById("dayTradeError");
+      const dayTradeResult = document.getElementById("dayTradeResult");
+      const dayTradeProfit = document.getElementById("dayTradeProfit");
+      const dayTradeLatestCost = document.getElementById("dayTradeLatestCost");
+      const dayTradeLatestShares = document.getElementById("dayTradeLatestShares");
+      const dayTradeCostReduction = document.getElementById("dayTradeCostReduction");
       const compoundPrincipalInput = document.getElementById("compoundPrincipal");
       const compoundRateInput = document.getElementById("compoundRate");
       const compoundTimesInput = document.getElementById("compoundTimes");
@@ -631,6 +720,7 @@
       priceBtn.addEventListener("click", handlePriceCalc);
       expectedPriceBtn.addEventListener("click", handleExpectedPriceCalc);
       buyBtn.addEventListener("click", handleBuyCalc);
+      dayTradeBtn.addEventListener("click", handleDayTradeCalc);
       compoundBtn.addEventListener("click", handleCompoundCalc);
       dualBtn.addEventListener("click", handleDualAccountCalc);
       averageCostBtn.addEventListener("click", handleAverageCostCalc);
@@ -642,6 +732,7 @@
       handlePriceCalc();
       handleExpectedPriceCalc();
       handleBuyCalc();
+      handleDayTradeCalc();
       handleCompoundCalc();
       handleDualAccountCalc();
       handleAverageCostCalc();
@@ -759,6 +850,64 @@
           show(buyResult);
         } catch (error) {
           show(buyError, readError(error, "输入有误"));
+        }
+      }
+
+      function handleDayTradeCalc() {
+        hide(dayTradeError);
+        hide(dayTradeResult);
+
+        const originalShares = Number(dayOriginalSharesInput.value);
+        const originalCost = Number(dayOriginalCostInput.value);
+        const buyPrice = Number(dayBuyPriceInput.value);
+        const buyShares = Number(dayBuySharesInput.value);
+        const buyFee = Number(dayBuyFeeInput.value);
+        const sellPrice = Number(daySellPriceInput.value);
+        const sellShares = Number(daySellSharesInput.value);
+        const sellFee = Number(daySellFeeInput.value);
+
+        try {
+          if (!Number.isInteger(originalShares) || originalShares <= 0) {
+            throw new Error("原本持仓数量必须是大于 0 的整数。");
+          }
+          if (!Number.isFinite(originalCost) || originalCost <= 0) {
+            throw new Error("持仓成本必须大于 0。");
+          }
+          if (!Number.isFinite(buyPrice) || buyPrice <= 0) {
+            throw new Error("做T买入成本必须大于 0。");
+          }
+          if (!Number.isInteger(buyShares) || buyShares <= 0) {
+            throw new Error("买入数量必须是大于 0 的整数。");
+          }
+          if (!Number.isFinite(buyFee) || buyFee < 0) {
+            throw new Error("买入交易手续费必须大于或等于 0。");
+          }
+          if (!Number.isFinite(sellPrice) || sellPrice <= 0) {
+            throw new Error("做T卖出的成本必须大于 0。");
+          }
+          if (!Number.isInteger(sellShares) || sellShares <= 0) {
+            throw new Error("卖出的数量必须是大于 0 的整数。");
+          }
+          if (!Number.isFinite(sellFee) || sellFee < 0) {
+            throw new Error("卖出交易手续费必须大于或等于 0。");
+          }
+          if (sellShares >= originalShares + buyShares) {
+            throw new Error("卖出的数量必须小于原本持仓数量与买入数量之和。");
+          }
+
+          const originalTotalCost = originalShares * originalCost;
+          const latestShares = originalShares + buyShares - sellShares;
+          const latestTotalCost = originalTotalCost + buyPrice * buyShares - sellPrice * sellShares - buyFee - sellFee;
+          const latestCost = latestTotalCost / latestShares;
+          const profit = originalTotalCost - latestCost * latestShares;
+
+          dayTradeProfit.textContent = formatMoney(profit);
+          dayTradeLatestCost.textContent = formatMoney(latestCost);
+          dayTradeLatestShares.textContent = String(latestShares);
+          dayTradeCostReduction.textContent = formatMoney(originalCost - latestCost);
+          show(dayTradeResult);
+        } catch (error) {
+          show(dayTradeError, readError(error, "输入有误"));
         }
       }
 

@@ -1,8 +1,9 @@
 import { calculateLimitUp } from "./calculator.js";
 import { calculateExpectedPrice } from "./expected-price.js";
 import { calculateBuy } from "./buy.js";
+import { calculateDayTrade } from "./day-trade.js";
 
-type Mode = "limit-up" | "expected-price" | "buy";
+type Mode = "limit-up" | "expected-price" | "buy" | "day-trade";
 
 type CliArgs = {
   mode: "limit-up";
@@ -18,6 +19,16 @@ type CliArgs = {
   mode: "buy";
   buyAmount: number;
   currentPrice: number;
+} | {
+  mode: "day-trade";
+  originalShares: number;
+  originalCost: number;
+  buyPrice: number;
+  buyShares: number;
+  buyFee: number;
+  sellPrice: number;
+  sellShares: number;
+  sellFee: number;
 };
 
 function main(): void {
@@ -30,6 +41,11 @@ function main(): void {
 
   if (args.mode === "buy") {
     printBuy(args);
+    return;
+  }
+
+  if (args.mode === "day-trade") {
+    printDayTrade(args);
     return;
   }
 
@@ -81,6 +97,15 @@ function printBuy(args: Extract<CliArgs, { mode: "buy" }>): void {
   console.log(`买完后剩余金额: ${formatMoney(result.remainingAmount)}`);
 }
 
+function printDayTrade(args: Extract<CliArgs, { mode: "day-trade" }>): void {
+  const result = calculateDayTrade(args);
+
+  console.log(`本次做T赚到的金额: ${formatMoney(result.profit)}`);
+  console.log(`最新成本: ${formatMoney(result.latestCost)}`);
+  console.log(`最新持有数量: ${result.latestShares}`);
+  console.log(`本次做T成本降低: ${formatMoney(result.costReduction)}`);
+}
+
 function parseCliArgs(argv: string[]): CliArgs {
   const mode = parseMode(argv);
 
@@ -92,11 +117,15 @@ function parseCliArgs(argv: string[]): CliArgs {
     return parseBuyArgs(argv.slice(1));
   }
 
+  if (mode === "day-trade") {
+    return parseDayTradeArgs(argv.slice(1));
+  }
+
   return parseLimitUpArgs(mode === "limit-up" ? argv.slice(1) : argv);
 }
 
 function parseMode(argv: string[]): Mode | undefined {
-  if (argv[0] === "limit-up" || argv[0] === "expected-price" || argv[0] === "buy") {
+  if (argv[0] === "limit-up" || argv[0] === "expected-price" || argv[0] === "buy" || argv[0] === "day-trade") {
     return argv[0];
   }
   return undefined;
@@ -141,6 +170,39 @@ function parseBuyArgs(argv: string[]): CliArgs {
     mode: "buy",
     buyAmount,
     currentPrice
+  };
+}
+
+function parseDayTradeArgs(argv: string[]): CliArgs {
+  if (argv.length !== 8) {
+    throw new Error(
+      "参数数量不正确。用法: node dist/index.js day-trade <原本持仓数量> <持仓成本> <做T买入成本> <买入数量> <买入交易手续费> <做T卖出成本> <卖出数量> <卖出交易手续费>"
+    );
+  }
+
+  const originalShares = Number(argv[0]);
+  const originalCost = Number(argv[1]);
+  const buyPrice = Number(argv[2]);
+  const buyShares = Number(argv[3]);
+  const buyFee = Number(argv[4]);
+  const sellPrice = Number(argv[5]);
+  const sellShares = Number(argv[6]);
+  const sellFee = Number(argv[7]);
+
+  if ([originalShares, originalCost, buyPrice, buyShares, buyFee, sellPrice, sellShares, sellFee].some(Number.isNaN)) {
+    throw new Error("做T参数必须全部是数字。");
+  }
+
+  return {
+    mode: "day-trade",
+    originalShares,
+    originalCost,
+    buyPrice,
+    buyShares,
+    buyFee,
+    sellPrice,
+    sellShares,
+    sellFee
   };
 }
 
