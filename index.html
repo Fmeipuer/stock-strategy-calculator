@@ -590,7 +590,7 @@
 
         <section class="card tab-panel" id="averageCostPanel" role="tabpanel" hidden>
           <h2 class="section-title">补仓成本价计算器</h2>
-          <p class="section-note">输入建仓和补仓的成本价格、买入股数、手续费，计算补仓后的最新成本价与总持股数。</p>
+          <p class="section-note">输入建仓和补仓的成本价格、买入股数、手续费，计算补仓需要的金额、补仓后的最新成本价与总持股数。</p>
 
           <div class="form-grid average-cost-grid">
             <div class="field">
@@ -625,6 +625,10 @@
 
           <div id="averageCostError" class="status status-error" hidden></div>
           <div class="price-grid" id="averageCostResult" hidden>
+            <div class="price-box">
+              <div class="price-label">补仓需要的金额</div>
+              <div class="price-value" id="addRequiredAmount">0.000</div>
+            </div>
             <div class="price-box">
               <div class="price-label">最新成本价</div>
               <div class="price-value" id="latestCostPrice">0.000</div>
@@ -711,6 +715,7 @@
       const averageCostBtn = document.getElementById("averageCostBtn");
       const averageCostError = document.getElementById("averageCostError");
       const averageCostResult = document.getElementById("averageCostResult");
+      const addRequiredAmount = document.getElementById("addRequiredAmount");
       const latestCostPrice = document.getElementById("latestCostPrice");
       const totalShares = document.getElementById("totalShares");
       const tabButtons = document.querySelectorAll("[data-tab-target]");
@@ -1046,9 +1051,11 @@
           }
 
           const shares = initialShares + addShares;
-          const totalCost = initialCostPrice * initialShares + initialFee + addCostPrice * addShares + addFee;
+          const addAmount = addCostPrice * addShares + addFee;
+          const totalCost = initialCostPrice * initialShares + initialFee + addAmount;
           const cost = totalCost / shares;
 
+          addRequiredAmount.textContent = formatMoney(addAmount);
           latestCostPrice.textContent = formatMoney(cost);
           totalShares.textContent = String(shares);
           show(averageCostResult);
