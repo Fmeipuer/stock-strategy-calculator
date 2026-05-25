@@ -902,7 +902,7 @@
 
           const originalTotalCost = originalShares * originalCost;
           const latestShares = originalShares + buyShares - sellShares;
-          const latestTotalCost = originalTotalCost + buyPrice * buyShares - sellPrice * sellShares - buyFee - sellFee;
+          const latestTotalCost = originalTotalCost + buyPrice * buyShares - sellPrice * sellShares + buyFee + sellFee;
           const latestCost = latestTotalCost / latestShares;
           const profit = originalTotalCost - latestCost * latestShares;
 
